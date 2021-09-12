@@ -9,7 +9,7 @@
     <meta content="" property="og:url">
     <meta content="" property="og:image">
     <meta content="#812BDC" data-react-helmet="true" name="theme-color">
-    <title>Gatekeeper</title>
+    <title>Ban Appeal</title>
     <style>
         @media screen and (min-width: 601px) {
             div.example {
@@ -39,28 +39,18 @@
             border-radius: 50%;
         }
     </style>
-    <script>
-        function getParams() {
-            var params = {}, pairs = document.URL.split('?').pop().split('&');
-            for (var i = 0, p; i < pairs.length; i++) { p = pairs[i].split('='); params[p[0]] = p[1]; } return params;
-        }
-    </script>
 </head>
 
 
 <body class="vsc-initialized"><br>
     <p style="text-align:center;">
         <a href="./">
-            <img class="server-icon" src="./server_icon.png" alt="Server Icon" width="128" height="128">
+            <img class="server-icon" src="./logo" alt="Server Icon" width="128" height="128">
         </a>
     </p>
-    <h2>Gatekeeper</h2>
-    <script>params = getParams();
-        let code = unescape(params["error"]);
-        let error_description = decodeURIComponent(unescape(params["error_description"]).replace(/\+/g, '%20'));
-        if (code === "") {err_code = ""} else {err_code = `Error Code: ${code}`}
-        document.write("<p>" + error_description + "<br>" + err_code + "</p>");
-    </script>
+    <h2>Ban Appeal</h2>
+    <br>
+    <p>You are only permitted to make one appeal.</p>
 
     <!-- Made by Kara -->
 </body>

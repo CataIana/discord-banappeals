@@ -1,9 +1,7 @@
 {
     "client_id": "",
     "client_secret": "",
-    "bot_token": "",
     "server_url": "",
-    "guild_id": ,
-    "role_id": ,
-    "log_channel": 
+    "webhook_urls": "",
+    "proxy_port": 5005
 }

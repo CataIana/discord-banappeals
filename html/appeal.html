@@ -35,7 +35,7 @@
       text-align: center;
     }
 
-    .button {
+    .submitbutton {
       background-color: rgb(47, 49, 54);
       /* Join Server Button */
       border: 2px solid rgb(255, 255, 255);
@@ -62,23 +62,65 @@
     .server-icon {
       border-radius: 50%;
     }
+
+    #appealbox {
+      height: 200px;
+      font-size: 14pt;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button:disabled,
+    button[disabled],
+    input:disabled,
+    input[disabled] {
+      border: 2px solid rgb(100, 100, 100);
+      color: rgb(100, 100, 100);
+    }
   </style>
+  <script>
+    function getParams() {
+      var params = {}, pairs = document.URL.split('?').pop().split('&');
+      for (var i = 0, p; i < pairs.length; i++) { p = pairs[i].split('='); params[p[0]] = p[1]; } return params;
+    }
+
+    function fillID() {
+      document.getElementById("user_id").value = getParams()["id"];
+      checkLength();
+    }
+
+    function checkLength() {
+      if (document.getElementById("appealbox").value.length > 99) {
+        document.getElementById("submitbutton").disabled = false;
+      }
+      else {
+        document.getElementById("submitbutton").disabled = true;
+      }
+    }
+  </script>
 </head>
 
 
-<body class="vsc-initialized"><br>
+<body class="vsc-initialized" onload="fillID()"><br>
   <p style="text-align:center;">
     <a href="./">
       <img class="server-icon" src="./logo" alt="Server Icon" width="128" height="128">
     </a>
   </p>
   <h2>Ban Appeal</h2>
-  <p>You must login to your discord account to submit a ban appeal.<br><br>
-  You are only able to submit a ban appeal once per ban.<br>You are only allowed to submit one appeal.</p>
-
-  <div class="center-div">
-    <a href='./authorize?code-required=true' class="button">Login</a>
-  </div>
+  <p>Tell us in at least 100 characters,<br>why you think you should be unbanned.</p>
+  <br>
+  <form action="/submit" method="POST">
+    <input type="hidden" id="user_id" name="user_id">
+    <div class="center-div">
+      <textarea oninput="checkLength()" name="appealbox" id="appealbox" type="text" maxlength="2000" autofocus
+        minlength="100" required rows="5" cols="60"></textarea>
+    </div>
+    <br>
+    <div class="center-div">
+      <input disabled type="submit" class="submitbutton" id="submitbutton" value="Submit Appeal">
+    </div>
+  </form>
+  <br><br>
 
   <!-- Made by Kara -->
 </body>
