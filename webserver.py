@@ -1,12 +1,9 @@
 from aiohttp import web
-import asyncio
 import json
-import base64
-import time
 from datetime import datetime
 from random import choice
 from string import ascii_letters
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs
 
 class RecieverWebServer():
     def __init__(self, bot):
