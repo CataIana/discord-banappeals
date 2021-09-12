@@ -11,5 +11,5 @@ This setup assumes you are using the reverse proxy server nginx.
 * Optionally you can replace the logo.png with anything you like
 * Before starting the bot, install the few depdendencies `sudo pip3 install --upgrade discord.py aiohttp`
 * Create a new discord application, and under Oauth2, add a redirect uri with `<server-name>/authorize`, replacing `<server-name>` with your domain. Eg `https://example.com/authorize`
-* Rename `exampleconfig.json` to `config.json` and fill in the required fields. If you changed the port in the nginx, set the proxy_port to the same port.
+* Rename `exampleconfig.json` to `config.json` and fill in the required fields. If you changed the port in the nginx configuration file, set the proxy_port to the same port.
 * Finally, you should be able to just run the bot, with `python3 bot.py`.
