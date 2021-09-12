@@ -38,13 +38,25 @@ class RecieverWebServer():
     async def submit(self, request):
         r = await request.read()
         query = parse_qs(r.decode())
+        self.bot.log.debug(query)
         if query.get('user_id', None) is None:
             return web.Response(body="Invalid request", status=400)
         user = self.ids.get(query['user_id'][0], None)
         if user is None:
             return web.Response(body="Invalid request", status=400)
-        await self.bot.submit_appeal(query["user_id"][0], user["object"], query["appealbox"][0])
-        return web.HTTPSeeOther("/done")
+        try:
+            await self.bot.submit_appeal(id=query["user_id"][0], user=user["object"], ban_age=query["ban_age"][0], justified_ban=query["justified"][0], ban_reason=query["whyunbanme"][0], ban_appeal=query["appealbox"][0], extra_message=query.get("extramessage", [''])[0])
+        except KeyError: # Put the user back on the appeal back if they somehow submit without filling in everything
+            try:
+                return web.HTTPSeeOther(f"{self.config['server_url']}/appeal?id={query['user_id'][0]}")
+            except KeyError: # Put the user back onto the root page if the ID can't be fetched
+                return web.HTTPSeeOther(f"{self.config['server_url']}")
+        except IndexError:
+            try:
+                return web.HTTPSeeOther(f"{self.config['server_url']}/appeal?id={query['user_id'][0]}")
+            except KeyError:
+                return web.HTTPSeeOther(f"{self.config['server_url']}")
+        return web.HTTPSeeOther(f"{self.config['server_url']}/done")
 
     async def error(self, request):
         return web.FileResponse("html/error.html")
@@ -102,11 +114,14 @@ class RecieverWebServer():
         r = await self.bot.aSession.get(f"{self.discord_url}/users/@me", headers={"Authorization": f"Bearer {token['access_token']}"})
         user = await r.json()
         self.bot.log.debug(f"User Details: {user}")
-
-
         random = self.random_string(20)
         while random in list(self.ids.keys()):
             random = self.random_string(20)
+        for random_string, u in self.ids.items():
+            if u["object"]["id"] == user["id"]:
+                random = random_string
+                break
+        
         self.ids[random] = {"submitted": datetime.utcnow(), "object": user}
         with open("appealed_users.txt") as f:
             already_appealed = f.read().splitlines()

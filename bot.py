@@ -66,9 +66,23 @@ class Appeals():
         ext = "gif" if user["avatar"].startswith("a_") else "png"
         return f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.{ext}?size={128}"
 
-    async def submit_appeal(self, id, user, appeal_message):
+    async def submit_appeal(self, id, user, ban_age, justified_ban, ban_reason, ban_appeal, extra_message):
         self.log.info(f"Submitting appeal for {user['username']}#{user['discriminator']} ({user['id']})")
-        embed = Embed(title="New Appeal", description=appeal_message, colour=self.colour, timestamp=datetime.utcnow())
+        embed = Embed(title="New Appeal", colour=self.colour, timestamp=datetime.utcnow())
+        ban_age_dict = {
+            "lessthan31d": "Less than 31 days ago",
+            "13months": "1-3 Months ago",
+            "36months": "3-6 Months ago",
+            "612months": "6-12 Months ago",
+            "morethan12m": "More than a year ago"
+        }
+
+        embed.add_field(name="When did you recieve your ban?", value=ban_age_dict[ban_age], inline=False)
+        embed.add_field(name="Do you think the ban was justified?", value="Yes" if justified_ban == "yes" else "No", inline=False)
+        embed.add_field(name="Why do you think you were banned?", value=ban_reason[:1024], inline=False)
+        embed.add_field(name="Why do you think you should be unbanned?", value=ban_appeal[:1024], inline=False)
+        if extra_message != "":
+            embed.add_field(name="Is there anything else you would like to add?", value=extra_message[:1024], inline=False)
         embed.set_author(name=f"{user['username']}#{user['discriminator']}", icon_url=self.get_avatar(user))
         embed.set_footer(text=f"User ID: {user['id']}")
         if type(self.web_server.config["webhook_urls"]) == list:
