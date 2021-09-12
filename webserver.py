@@ -13,7 +13,7 @@ class RecieverWebServer():
         with open("config.json") as f:
             self.config = json.load(f)
         self.bot = bot
-        self.port = self.config.get(int("proxy_port"), 5005)
+        self.port = int(self.config.get("proxy_port", 5005))
         self.discord_url = "https://discord.com/api"
         self.web_server = web.Application()
         self.web_server.add_routes([web.get('/', self.main)])
