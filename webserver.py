@@ -20,6 +20,7 @@ class RecieverWebServer():
         self.web_server.add_routes([web.get('/error', self.error)])
         self.web_server.add_routes([web.get('/done', self.success)])
         self.web_server.add_routes([web.get('/logo', self.logo)])
+        self.web_server.add_routes([web.get('/favicon', self.favicon)])
         self.ids = {}
 
     async def start(self):
@@ -34,6 +35,9 @@ class RecieverWebServer():
 
     async def logo(self, request):
         return web.FileResponse("html/logo.png")
+
+    async def favicon(self, request):
+        return web.FileResponse("html/favicon.ico")
 
     async def submit(self, request):
         r = await request.read()
