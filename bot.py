@@ -1,4 +1,4 @@
-from discord import Colour, Embed, Webhook, AsyncWebhookAdapter, HTTPException, NotFound
+import discord
 from aiohttp import ClientSession
 from webserver import RecieverWebServer
 from datetime import datetime
@@ -27,7 +27,7 @@ class Appeals():
         self.web_server = RecieverWebServer(self)
         self.loop.run_until_complete(self.web_server.start())
 
-        self.colour = Colour.from_rgb(128, 0, 128)
+        self.colour = discord.Colour.from_rgb(128, 0, 128)
         self.pending_users = []
     
     def run(self):
@@ -68,7 +68,7 @@ class Appeals():
 
     async def submit_appeal(self, id, user, ban_age, justified_ban, ban_reason, ban_appeal, extra_message):
         self.log.info(f"Submitting appeal for {user['username']}#{user['discriminator']} ({user['id']})")
-        embed = Embed(title="New Appeal", colour=self.colour, timestamp=datetime.utcnow())
+        embed = discord.Embed(title="New Appeal", colour=self.colour, timestamp=datetime.utcnow())
         ban_age_dict = {
             "lessthan31d": "Less than 31 days ago",
             "13months": "1-3 Months ago",
@@ -86,15 +86,21 @@ class Appeals():
         embed.set_author(name=f"{user['username']}#{user['discriminator']}", icon_url=self.get_avatar(user))
         embed.set_footer(text=f"User ID: {user['id']}")
         if type(self.web_server.config["webhook_urls"]) == list:
-            webhooks = [Webhook.from_url(url, adapter=AsyncWebhookAdapter(self.aSession)) for url in self.web_server.config["webhook_urls"]]
+            if discord.__version__ == "2.0.0a":
+                webhooks = [discord.Webhook.from_url(url, session=self.aSession) for url in self.web_server.config["webhook_urls"]]
+            else:
+                webhooks = [discord.Webhook.from_url(url, adapter=discord.AsyncWebhookAdapter(self.aSession)) for url in self.web_server.config["webhook_urls"]]
         else:
-            webhooks = [Webhook.from_url(self.web_server.config["webhook_urls"], adapter=AsyncWebhookAdapter(self.aSession))]
+            if discord.__version__ == "2.0.0a":
+                webhooks = [discord.Webhook.from_url(self.web_server.config["webhook_urls"], session=self.aSession)]
+            else:
+                webhooks = [discord.Webhook.from_url(self.web_server.config["webhook_urls"], adapter=discord.AsyncWebhookAdapter(self.aSession))]
         for webhook in webhooks:
             try:
                 await webhook.send(embed=embed)
-            except HTTPException:
+            except discord.HTTPException:
                 pass
-            except NotFound:
+            except discord.NotFound:
                 pass
         try:
             del self.web_server.ids[id]
