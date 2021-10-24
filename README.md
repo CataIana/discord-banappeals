@@ -6,9 +6,8 @@ Output is directed to one or multiple webhooks
 ## Known Issues
 Some characters are not properly decoded in the appeal embed.
 
-This setup assumes you are using the reverse proxy server nginx.
 # Setup:
-* Ensure you have a working nginx setup.
+* This setup assumes you are using the reverse proxy server nginx.
 * Copy the provided `nginx_conf` file to `/etc/nginx/sites-enabled`, renaming it as necessary.
 * Set the \<server-name>, the \<directory> that the cloned folder is in, and if necessary, replace the with a port of your choice, The default is 5005
 * Optionally you can replace the logo.png with anything you like
