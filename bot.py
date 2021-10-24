@@ -2,6 +2,7 @@ import discord
 from aiohttp import ClientSession
 from webserver import RecieverWebServer
 from datetime import datetime
+from textwrap import shorten
 import asyncio
 import logging
 import signal
@@ -56,6 +57,8 @@ class Appeals():
         self.aSession = ClientSession()
         self.log.info(f"------ Web Server Running ------")
         self.log.info(f"Appeals URL: {self.web_server.config['server_url']}")
+        # Permission integer 4 for fetch ban permission
+        self.log.info(f"Invite URL: https://discord.com/oauth2/authorize?client_id={self.web_server.config['client_id']}&scope=bot&permissions=4")
 
     async def close(self):
         if not self.aSession.closed:
@@ -63,8 +66,12 @@ class Appeals():
         self.log.info("Shutting down...")
 
     def get_avatar(self, user):
-        ext = "gif" if user["avatar"].startswith("a_") else "png"
-        return f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.{ext}?size={128}"
+        if user["avatar"]:
+            ext = "gif" if user["avatar"].startswith("a_") else "png"
+            return f"https://cdn.discordapp.com/avatars/{user['id']}/{user['avatar']}.{ext}?size={128}"
+        else:
+            key = int(user['discriminator']) % 5
+            return f"https://cdn.discordapp.com/embed/avatars/{key}.png"
 
     async def submit_appeal(self, id, user, ban_age, justified_ban, ban_reason, ban_appeal, extra_message):
         self.log.info(f"Submitting appeal for {user['username']}#{user['discriminator']} ({user['id']})")
@@ -79,10 +86,10 @@ class Appeals():
 
         embed.add_field(name="When did you recieve your ban?", value=ban_age_dict[ban_age], inline=False)
         embed.add_field(name="Do you think the ban was justified?", value="Yes" if justified_ban == "yes" else "No", inline=False)
-        embed.add_field(name="Why do you think you were banned?", value=ban_reason[:1024], inline=False)
-        embed.add_field(name="Why do you think you should be unbanned?", value=ban_appeal[:1024], inline=False)
+        embed.add_field(name="Why do you think you were banned?", value=shorten(ban_reason, width=1024), inline=False)
+        embed.add_field(name="Why do you think you should be unbanned?", value=shorten(ban_appeal, width=1024), inline=False)
         if extra_message != "":
-            embed.add_field(name="Is there anything else you would like to add?", value=extra_message[:1024], inline=False)
+            embed.add_field(name="Is there anything else you would like to add?", value=shorten(extra_message, width=1024), inline=False)
         embed.set_author(name=f"{user['username']}#{user['discriminator']}", icon_url=self.get_avatar(user))
         embed.set_footer(text=f"User ID: {user['id']}")
         if type(self.web_server.config["webhook_urls"]) == list:

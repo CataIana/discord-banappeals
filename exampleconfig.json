@@ -3,5 +3,8 @@
     "client_secret": "",
     "server_url": "",
     "webhook_urls": "",
-    "proxy_port": 5005
+    "proxy_port": 5005,
+    "guild_id": "",
+    "bot_token": "",
+    "check_ban_before_submission": false
 }

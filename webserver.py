@@ -4,20 +4,38 @@ from datetime import datetime
 from random import choice
 from string import ascii_letters
 from urllib.parse import parse_qs
+from typing import TYPE_CHECKING
+from html import unescape
+if TYPE_CHECKING:
+    from .bot import Appeals
 
 class RecieverWebServer():
     def __init__(self, bot):
+        self.bot: Appeals = bot
         with open("config.json") as f:
             self.config = json.load(f)
-        self.bot = bot
+        self.check_banned = self.config.get("check_ban_before_submission", False)
+        if self.check_banned:
+            try:
+                self.guild_id = int(self.config["guild_id"])
+                self.bot_token = self.config["bot_token"]
+                if self.bot_token == "":
+                    raise KeyError
+            except KeyError:
+                self.check_banned = False
+                self.bot.log.warning("Check bans is enabled, but bad configuration provided! Disabling.")
+            except ValueError:
+                self.check_banned = False
+                self.bot.log.warning("Check bans is enabled, but bad configuration provided! Disabling.")
         self.port = int(self.config.get("proxy_port", 5005))
-        self.discord_url = "https://discord.com/api"
+        self.discord_url = "https://discord.com/api/v9"
         self.web_server = web.Application()
         self.web_server.add_routes([web.get('/', self.main)])
         self.web_server.add_routes([web.get('/authorize', self.authorize)])
         self.web_server.add_routes([web.get('/appeal', self.appeal)])
         self.web_server.add_routes([web.post('/submit', self.submit)])
         self.web_server.add_routes([web.get('/error', self.error)])
+        self.web_server.add_routes([web.get('/notbanned', self.notbanned)])
         self.web_server.add_routes([web.get('/done', self.success)])
         self.web_server.add_routes([web.get('/logo', self.logo)])
         self.web_server.add_routes([web.get('/favicon', self.favicon)])
@@ -42,14 +60,14 @@ class RecieverWebServer():
     async def submit(self, request):
         r = await request.read()
         query = parse_qs(r.decode())
-        self.bot.log.debug(query)
+        self.bot.log.debug(f"Appeal submission: {query}")
         if query.get('user_id', None) is None:
             return web.Response(body="Invalid request", status=400)
         user = self.ids.get(query['user_id'][0], None)
         if user is None:
             return web.Response(body="Invalid request", status=400)
         try:
-            await self.bot.submit_appeal(id=query["user_id"][0], user=user["object"], ban_age=query["ban_age"][0], justified_ban=query["justified"][0], ban_reason=query["whyunbanme"][0], ban_appeal=query["appealbox"][0], extra_message=query.get("extramessage", [''])[0])
+            await self.bot.submit_appeal(id=query["user_id"][0], user=user["object"], ban_age=query["ban_age"][0], justified_ban=query["justified"][0], ban_reason=unescape(query["whyunbanme"][0]), ban_appeal=unescape(query["appealbox"][0]), extra_message=unescape(query.get("extramessage", [''])[0]))
         except KeyError: # Put the user back on the appeal back if they somehow submit without filling in everything
             try:
                 return web.HTTPSeeOther(f"{self.config['server_url']}/appeal?id={query['user_id'][0]}")
@@ -64,6 +82,9 @@ class RecieverWebServer():
 
     async def error(self, request):
         return web.FileResponse("html/error.html")
+
+    async def notbanned(self, request):
+        return web.FileResponse("html/notbanned.html")
 
     async def success(self, request):
         return web.FileResponse("html/done.html")
@@ -125,6 +146,21 @@ class RecieverWebServer():
             if u["object"]["id"] == user["id"]:
                 random = random_string
                 break
+
+        #Start checks if user is banned in guild, if provided
+        if self.check_banned:
+            r = await self.bot.aSession.get(f"{self.discord_url}/guilds/{self.guild_id}/bans/{user['id']}",
+                headers={"Authorization": f"Bot {self.bot_token}"})
+            if r.status == 404: #Discord returns 404 if no ban
+                self.bot.log.debug(f"User {user['username']} not banned. Redirecting to error page")
+                return web.HTTPSeeOther(f"{self.config['server_url']}/notbanned")
+            elif r.status == 401: #401 returned if cannot check
+                self.bot.log.warning("Ban check returned 401! Please check token and server permissions! Continuing without check")
+            elif r.status == 200: #Returns 200 if the user is banned
+                self.bot.log.debug(f"Confirmed user {user['username']} is banned. Proceeding with submission")
+            else: #If something else happens, send a warning. This ideally should never happen.
+                ban = await r.json()
+                self.bot.log.warning(f"Ban check returned message: {ban['message']}. Continuing without check")
         
         self.ids[random] = {"submitted": datetime.utcnow(), "object": user}
         with open("appealed_users.txt") as f:
