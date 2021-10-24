@@ -18,7 +18,7 @@ Some characters are not properly decoded in the appeal embed.
 
 * Optionally, the script can also check if users are actually banned, preventing useless appeals. This requires a guild ID, a Bot token, and the bot to be authorized with the ban members permission in the server. Check will be ignored if any of these values are not provided
 
-## Example Config with description1
+## Example Config with description
 ```
 {
     "client_id": "The client ID of the discord application. Create in https://discordapp.com/developers/applications/",
