@@ -109,10 +109,6 @@ class Appeals():
                 pass
             except discord.NotFound:
                 pass
-        try:
-            del self.web_server.ids[id]
-        except KeyError:
-            pass
 
         with open("appealed_users.txt", "a+") as f:
             f.write(f"{user['id']}\n")

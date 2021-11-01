@@ -66,6 +66,7 @@ class RecieverWebServer():
         user = self.ids.get(query['user_id'][0], None)
         if user is None:
             return web.Response(body="Invalid request", status=400)
+        del self.ids[query["user_id"][0]]
         try:
             await self.bot.submit_appeal(id=query["user_id"][0], user=user["object"], ban_age=query["ban_age"][0], justified_ban=query["justified"][0], ban_reason=unescape(query["whyunbanme"][0]), ban_appeal=unescape(query["appealbox"][0]), extra_message=unescape(query.get("extramessage", [''])[0]))
         except KeyError: # Put the user back on the appeal back if they somehow submit without filling in everything
