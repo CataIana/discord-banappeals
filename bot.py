@@ -3,7 +3,7 @@ import json
 import logging
 import signal
 import sys
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from textwrap import shorten
 
 import aiofiles
@@ -91,7 +91,7 @@ class Appeals():
         self.log.info(
             f"Submitting appeal for {user['username']} ({user['id']})")
         embed = Embed(title="New Appeal", colour=self.colour,
-                      timestamp=datetime.now(UTC))
+                      timestamp=datetime.now(timezone.utc))
         ban_age_dict = {
             "lessthan31d": "Less than 31 days ago",
             "13months": "1-3 Months ago",

@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from html import unescape
 from random import choice
 from string import ascii_letters
@@ -173,7 +173,7 @@ class RecieverWebServer():
                 self.bot.log.warning(
                     f"Ban check returned message: {ban['message']}. Continuing without check")
 
-        self.ids[random] = {"submitted": datetime.now(UTC), "object": user}
+        self.ids[random] = {"submitted": datetime.now(timezone.utc), "object": user}
         async with aiofiles.open("appealed_users.txt") as f:
             already_appealed = (await f.read()).splitlines()
         if not self.test_mode:
