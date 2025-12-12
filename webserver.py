@@ -1,32 +1,37 @@
-from aiohttp import web
 import json
-from datetime import datetime
+from datetime import UTC, datetime
+from html import unescape
 from random import choice
 from string import ascii_letters
-from urllib.parse import parse_qs
 from typing import TYPE_CHECKING
-from html import unescape
+from urllib.parse import parse_qs
+
+import aiofiles
+from aiohttp import web
+
 if TYPE_CHECKING:
     from .bot import Appeals
+
 
 class RecieverWebServer():
     def __init__(self, bot):
         self.bot: Appeals = bot
         with open("config.json") as f:
             self.config = json.load(f)
-        self.check_banned = self.config.get("check_ban_before_submission", False)
-        if self.check_banned:
-            try:
-                self.guild_id = int(self.config["guild_id"])
-                self.bot_token = self.config["bot_token"]
-                if self.bot_token == "":
-                    raise KeyError
-            except KeyError:
-                self.check_banned = False
-                self.bot.log.warning("Check bans is enabled, but bad configuration provided! Disabling.")
-            except ValueError:
-                self.check_banned = False
-                self.bot.log.warning("Check bans is enabled, but bad configuration provided! Disabling.")
+        self.test_mode = self.config.get("test_mode", False)
+        self.check_for_bans = True
+        if not self.test_mode:
+            if self.config.get("guild_id", "") == "":
+                self.check_for_bans = False
+                self.bot.log.warning(
+                    "Checking bans is enabled, but no guild ID was provided! Disabling ban checking.")
+            if self.config.get("bot_token", "") == "":
+                self.check_for_bans = False
+                self.bot.log.warning(
+                    "Checking bans is enabled, but no bot token was provided! Disabling ban checking.")
+            self.guild_id = self.config["guild_id"]
+            self.bot_token = self.config["bot_token"]
+        self.host = self.config.get("proxy_host", "localhost")
         self.port = int(self.config.get("proxy_port", 5005))
         self.discord_url = "https://discord.com/api/v9"
         self.web_server = web.Application()
@@ -44,20 +49,20 @@ class RecieverWebServer():
     async def start(self):
         runner = web.AppRunner(self.web_server)
         await runner.setup()
-        await web.TCPSite(runner, host="localhost", port=self.port).start()
-        self.bot.log.info(f"Webserver running on localhost:{self.port}")
+        await web.TCPSite(runner, host=self.host, port=self.port).start()
+        self.bot.log.info(f"Webserver running on {self.host}:{self.port}")
         return self.web_server
 
-    async def main(self, request):
+    async def main(self, request: web.Request):
         return web.FileResponse("html/index.html")
 
-    async def logo(self, request):
+    async def logo(self, request: web.Request):
         return web.FileResponse("html/logo.png")
 
-    async def favicon(self, request):
+    async def favicon(self, request: web.Request):
         return web.FileResponse("html/favicon.ico")
 
-    async def submit(self, request):
+    async def submit(self, request: web.Request):
         r = await request.read()
         query = parse_qs(r.decode())
         self.bot.log.debug(f"Appeal submission: {query}")
@@ -69,10 +74,10 @@ class RecieverWebServer():
         del self.ids[query["user_id"][0]]
         try:
             await self.bot.submit_appeal(id=query["user_id"][0], user=user["object"], ban_age=query["ban_age"][0], justified_ban=query["justified"][0], ban_reason=unescape(query["whyunbanme"][0]), ban_appeal=unescape(query["appealbox"][0]), extra_message=unescape(query.get("extramessage", [''])[0]))
-        except KeyError: # Put the user back on the appeal back if they somehow submit without filling in everything
+        except KeyError:  # Put the user back on the appeal back if they somehow submit without filling in everything
             try:
                 return web.HTTPSeeOther(f"{self.config['server_url']}/appeal?id={query['user_id'][0]}")
-            except KeyError: # Put the user back onto the root page if the ID can't be fetched
+            except KeyError:  # Put the user back onto the root page if the ID can't be fetched
                 return web.HTTPSeeOther(f"{self.config['server_url']}")
         except IndexError:
             try:
@@ -81,32 +86,32 @@ class RecieverWebServer():
                 return web.HTTPSeeOther(f"{self.config['server_url']}")
         return web.HTTPSeeOther(f"{self.config['server_url']}/done")
 
-    async def error(self, request):
+    async def error(self, request: web.Request):
         return web.FileResponse("html/error.html")
 
-    async def notbanned(self, request):
+    async def notbanned(self, request: web.Request):
         return web.FileResponse("html/notbanned.html")
 
-    async def success(self, request):
+    async def success(self, request: web.Request):
         return web.FileResponse("html/done.html")
 
-    async def appeal(self, request):
+    async def appeal(self, request: web.Request):
         if request.query.get("id", None) not in self.ids.keys():
             return web.HTTPSeeOther(f"{self.config['server_url']}")
-        with open("appealed_users.txt") as f:
-            already_appealed = f.read().splitlines()
+        async with aiofiles.open("appealed_users.txt") as f:
+            already_appealed = (await f.read()).splitlines()
         if request.query.get("id", None) in already_appealed:
-            return web.HTTPSeeOther(f"{self.config['server_url']}/error")    
+            return web.HTTPSeeOther(f"{self.config['server_url']}/error")
         return web.FileResponse("html/appeal.html")
 
-    async def authorize(self, request):
-        #Check if user needs to be redirected so a code can be aquired
+    async def authorize(self, request: web.Request):
+        # Check if user needs to be redirected so a code can be aquired
         if request.query.get("code-required", "false") == "true":
             scopes = "identify"
             url = f"https://discord.com/oauth2/authorize?client_id={self.config['client_id']}&redirect_uri={self.config['server_url']}/authorize&response_type=code&scope={scopes}"
             return web.HTTPSeeOther(url)
 
-        #Discord errors return here, redirect to error page if this is the case
+        # Discord errors return here, redirect to error page if this is the case
         if request.query.get("error", None) is not None:
             err_code = request.query.get("error", "")
             error_description = request.query.get("error_description", "")
@@ -130,7 +135,8 @@ class RecieverWebServer():
         r = await self.bot.aSession.post(f"{self.discord_url}/oauth2/token", headers={"Content-Type": "application/x-www-form-urlencoded"}, data=data)
         token = await r.json()
         if token.get("error", None) is not None:
-            self.bot.log.error(f"Error authorising: {token['error_description']}")
+            self.bot.log.error(
+                f"Error authorising: {token['error_description']}")
             err_code = ""
             error_description = "Invalid authorization code"
             return web.HTTPSeeOther(f"{self.config['server_url']}/error?error={err_code}&error_description={error_description}")
@@ -148,26 +154,31 @@ class RecieverWebServer():
                 random = random_string
                 break
 
-        #Start checks if user is banned in guild, if provided
-        if self.check_banned:
+        # Start checks if user is banned in guild, if provided
+        if not self.test_mode and self.check_for_bans:
             r = await self.bot.aSession.get(f"{self.discord_url}/guilds/{self.guild_id}/bans/{user['id']}",
-                headers={"Authorization": f"Bot {self.bot_token}"})
-            if r.status == 404: #Discord returns 404 if no ban
-                self.bot.log.debug(f"User {user['username']} not banned. Redirecting to error page")
+                                            headers={"Authorization": f"Bot {self.bot_token}"})
+            if r.status == 404:  # Discord returns 404 if no ban
+                self.bot.log.debug(
+                    f"User {user['username']} not banned. Redirecting to error page")
                 return web.HTTPSeeOther(f"{self.config['server_url']}/notbanned")
-            elif r.status == 401: #401 returned if cannot check
-                self.bot.log.warning("Ban check returned 401! Please check token and server permissions! Continuing without check")
-            elif r.status == 200: #Returns 200 if the user is banned
-                self.bot.log.debug(f"Confirmed user {user['username']} is banned. Proceeding with submission")
-            else: #If something else happens, send a warning. This ideally should never happen.
+            elif r.status == 401:  # 401 returned if cannot check
+                self.bot.log.warning(
+                    "Ban check returned 401! Please check token and server permissions! Continuing without check")
+            elif r.status == 200:  # Returns 200 if the user is banned
+                self.bot.log.debug(
+                    f"Confirmed user {user['username']} is banned. Proceeding with submission")
+            else:  # If something else happens, send a warning. This ideally should never happen.
                 ban = await r.json()
-                self.bot.log.warning(f"Ban check returned message: {ban['message']}. Continuing without check")
-        
-        self.ids[random] = {"submitted": datetime.utcnow(), "object": user}
-        with open("appealed_users.txt") as f:
-            already_appealed = f.read().splitlines()
-        if user['id'] in already_appealed:
-            return web.HTTPSeeOther(f"{self.config['server_url']}/error")    
+                self.bot.log.warning(
+                    f"Ban check returned message: {ban['message']}. Continuing without check")
+
+        self.ids[random] = {"submitted": datetime.now(UTC), "object": user}
+        async with aiofiles.open("appealed_users.txt") as f:
+            already_appealed = (await f.read()).splitlines()
+        if not self.test_mode:
+            if user['id'] in already_appealed:
+                return web.HTTPSeeOther(f"{self.config['server_url']}/error")
         return web.HTTPSeeOther(f"{self.config['server_url']}/appeal?id={random}")
 
     def random_string(self, length):

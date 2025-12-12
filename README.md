@@ -28,5 +28,5 @@ Some characters are not properly decoded in the appeal embed.
     "proxy_port": 5005,
     "guild_id": "Only required if checking bans before submission",
     "bot_token": "Only required if checking bans before submission
-    "check_ban_before_submission": false
+    "test_mode": false
 }```
